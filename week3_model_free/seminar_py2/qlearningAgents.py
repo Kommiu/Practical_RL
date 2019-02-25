@@ -7,7 +7,9 @@ from learningAgents import ReinforcementAgent
 from featureExtractors import *
 
 import random,util,math
+import numpy as np
 from collections import defaultdict
+from math import sqrt
 
 class QLearningAgent(ReinforcementAgent):
   """
@@ -56,14 +58,14 @@ class QLearningAgent(ReinforcementAgent):
     """
     
     possibleActions = self.getLegalActions(state)
-    #If there are no legal actions, return 0.0
+    #If there are no lega) actions, return 0.0
     if len(possibleActions) == 0:
     	return 0.0
-
     "*** YOUR CODE HERE ***"
-    raise NotImplementedError
+    
+    value = max(self.getQValue(state, a) for a in possibleActions)
 
-    return 0.
+    return value
     
   def getPolicy(self, state):
     """
@@ -79,7 +81,7 @@ class QLearningAgent(ReinforcementAgent):
     best_action = None
 
     "*** YOUR CODE HERE ***"
-    raise NotImplementedError
+    best_action = max(possibleActions, key=lambda a: self.getQValue(state, a))
 
     return best_action
 
@@ -107,7 +109,10 @@ class QLearningAgent(ReinforcementAgent):
     epsilon = self.epsilon
 
     "*** YOUR CODE HERE ***"
-    raise NotImplementedError    
+    if util.flipCoin(epsilon):
+        action  = random.choice(possibleActions)
+    else:
+        action = self.getPolicy(state)
 
     return action
 
@@ -125,12 +130,12 @@ class QLearningAgent(ReinforcementAgent):
     learning_rate = self.alpha
     
     "*** YOUR CODE HERE ***"
-    raise NotImplementedError
     
-    reference_qvalue = PleaseImplementMe
-    updated_qvalue = PleaseImplementMe
+    reference_qvalue = self.getQValue(state, action)
+    updated_qvalue = reference_qvalue*(1-learning_rate) + (self.getValue(nextState)*gamma+ reward)*learning_rate
 
-    self.setQValue(PleaseImplementMe,PleaseImplementMe,updated_qvalue)
+
+    self.setQValue(state, action, updated_qvalue)
 
 
 #---------------------#end of your code#---------------------#
@@ -140,7 +145,7 @@ class QLearningAgent(ReinforcementAgent):
 class PacmanQAgent(QLearningAgent):
   "Exactly the same as QLearningAgent, but with different default parameters"
 
-  def __init__(self, epsilon=0.05,gamma=0.8,alpha=0.2, numTraining=0, **args):
+  def __init__(self, epsilon=0.5,gamma=0.9,alpha=0.5, numTraining=0, **args):
     """
     These default parameters can be changed from the pacman.py command line.
     For example, to change the exploration rate, try:
@@ -157,6 +162,54 @@ class PacmanQAgent(QLearningAgent):
     args['numTraining'] = numTraining
     self.index = 0  # This is always Pacman
     QLearningAgent.__init__(self, **args)
+
+  def convertState(self,state):
+      pos_x, pos_y = state.getPacmanPosition()
+      new_state = [pos_x,pos_y]
+
+      ghosts = state.getGhostPositions()
+      if len(ghosts) != 0:
+          ghost_x, ghost_y = min([(pos_x - x,pos_y - y) for x,y in ghosts], key=lambda p: p[0]**2+p[1]**2 )
+          dist = ghost_x**2 + ghost_y**2
+          cos = round(ghost_x/sqrt(dist),2)
+          sin = round(ghost_y/sqrt(dist),2)
+          new_state.extend([dist, cos, sin])
+      new_state.extend(state.hasWall(pos_x+a,pos_y+b) for a,b in [(1,1),(-1,1),(1,-1),(-1,1)] )
+
+      food = state.getCapsules()
+      if len(food) != 0:
+          food_x, food_y = min([(pos_x - x,pos_y - y) for x,y in food], key=lambda p: p[0]**2+p[1]**2 )
+          dist = food_x**2 + food_y**2
+          cos = round(ghost_x/sqrt(dist),2)
+          sin = round(ghost_y/sqrt(dist),2)
+          new_state.extend([dist, cos, sin])
+
+      mean_x = 0
+      mean_y = 0
+      
+      for x,y in food:
+          mean_x += x
+          mean_y += y
+      
+      mean_x /= len(food)
+      mean_y /= len(food)
+
+      new_state.extend([mean_x, mean_y])
+
+
+
+
+      return tuple(new_state)
+
+  def getQValue(self, state, action):
+      state = self.convertState(state)
+      return QLearningAgent.getQValue(self,state,action)
+  def setQValue(self, state, action, value):
+      state = self.convertState(state)
+      QLearningAgent.setQValue(self,state, action,value)
+
+      
+
 
   def getAction(self, state):
     """

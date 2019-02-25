@@ -68,11 +68,11 @@ class QLearningAgent:
 
         # agent parameters
         gamma = self.discount
-        learning_rate = self.alpha
+        alpha = self.alpha
         
         q_hat = reward + gamma*self.get_value(next_state)
         
-        new_qvalue = (1 - learning_rate)* self.get_qvalue(state,action) + learning_rate*q_hat
+        new_qvalue = (1 - alpha)* self.get_qvalue(state,action) + alpha*q_hat
          
         self.set_qvalue(state, action, new_qvalue)
 
@@ -86,7 +86,7 @@ class QLearningAgent:
         if len(possible_actions) == 0:
             return None
 
-        best_action = max(possible_actions, key= lambda x: self.get_qvalue(state,x))
+        best_action = max(possible_actions, key=lambda a: self.get_qvalue(state,a))
         
         return best_action
 
